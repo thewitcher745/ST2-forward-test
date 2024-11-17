@@ -408,6 +408,7 @@ class Algo:
             # method, where CLOSE sentiments are given priority over SHADOW ), update the latest PBOS pdi and threshold (level). Note that since this
             # statement doesn't set latest_pbos_pdi to None, the pattern will not restart.
             if breaking_sentiment == "PBOS_SHADOW":
+
                 latest_pbos_pdi = breaking_pdi
                 latest_pbos_threshold = self.pair_df.iloc[breaking_pdi].high if trend_type == "ascending" else \
                     self.pair_df.iloc[breaking_pdi].low
@@ -478,6 +479,7 @@ class Algo:
             # If a CHOCH has happened, this means the pattern has inverted and should be restarted with the last LPL before the candle which closed
             # below the CHOCH.
             elif breaking_sentiment == "CHOCH_CLOSE":
+
                 trend_type = "ascending" if trend_type == "descending" else "descending"
 
                 # Set the pattern start to the last inverse pivot BEFORE the closing candle
@@ -516,7 +518,7 @@ class Algo:
 
     def convert_pdis_to_times(self, pdis: Union[int, list[int]]) -> Union[pd.Timestamp, list[pd.Timestamp], None]:
         """
-        Convert a list (or a single) of PDIs to their corresponding times using algo.pair_df.
+        Convert a list (or a single) of PDIs to their corresponding times using algo_code.pair_df.
 
         Args:
             pdis (list[int]): List of PDIs to convert.
@@ -542,4 +544,5 @@ class Algo:
             return times[0]
 
         return list(times)
+
 

@@ -21,6 +21,11 @@ class Segment:
                  type: str,
                  formation_method: str = "bos"):
 
+        global positions_logger
+
+        if positions_logger is None:
+            positions_logger = LoggerSingleton.get_logger("positions")
+
         self.end_pdi = end_pdi
         self.start_pdi = start_pdi
         self.ob_leg_start_pdi = ob_leg_start_pdi
@@ -32,7 +37,8 @@ class Segment:
         self.type = type
         self.formation_method = formation_method
 
-        self.id = f"SEG/{self.formation_method}/{self.start_pdi}"
+        if constants.logs_format != "time":
+            self.id = f"SEG/{self.formation_method}/{self.start_pdi}"
 
         self.ob_list: list[OrderBlock] = []
         self.pair_df: pd.DataFrame = pd.DataFrame()
@@ -48,6 +54,9 @@ class Segment:
         """
         self.pair_df = algo.pair_df.iloc[self.ob_formation_start_pdi:self.end_pdi + 1]
 
+        if constants.logs_format == "time":
+            self.id = f"SEG/{self.formation_method}/{algo.pair_df.loc[self.start_pdi].time}"
+
     # noinspection LongLine
     def find_order_blocks(self, algo):
         """
@@ -58,6 +67,8 @@ class Segment:
         Args:
             algo: The Algo object
         """
+        positions_logger.debug(f"Finding order blocks for segment {self.id}")
+
         # For testing and safety purposes, the ob_list property is reset.
         self.ob_list = []
 
@@ -76,6 +87,12 @@ class Segment:
         for pivot in algo.zigzag_df[(algo.zigzag_df.pivot_type == base_pivot_type) &
                                     (self.ob_leg_start_pdi <= algo.zigzag_df.pdi) &
                                     (algo.zigzag_df.pdi < self.broken_lpl_pdi)].itertuples():
+
+            if constants.logs_format == "time":
+                positions_logger.debug(f"\tFinding OBs for lower order leg starting at {algo.convert_pdis_to_times(pivot.pdi)}")
+            else:
+                positions_logger.debug(f"\tFinding OBs for lower order leg starting at {pivot.pdi}")
+
             # This try-except block is used to determine the window that is used for finding replacement order blocks in the chart. Currently, the
             # window spans from the very first base candle (the pivot found using the outer loop) to the lower-order pivot immediately after it.
             # The except clause catches the error in case we reach the end of the chart and no more next pivots exist, in which case the end of the
@@ -85,6 +102,11 @@ class Segment:
                 replacement_ob_threshold_pdi = next_pivot_pdi
             except IndexError:
                 replacement_ob_threshold_pdi = algo.pair_df.last_valid_index()
+
+            if constants.logs_format == "time":
+                positions_logger.debug(f"\tReplacement OB search threshold set up to {algo.convert_pdis_to_times(replacement_ob_threshold_pdi)}")
+            else:
+                positions_logger.debug(f"\tReplacement OB search threshold set up to {replacement_ob_threshold_pdi}")
 
             # times_moved indicates the times the algorithm had to move the base candle to find a replacement order block.
             times_moved = 0
@@ -101,15 +123,35 @@ class Segment:
 
                 ob.register_exit_candle(algo.pair_df, self.ob_formation_start_pdi)
 
+                if constants.logs_format == "time":
+                    positions_logger.debug(f"\t\tInvestigating base candle at {algo.convert_pdis_to_times(base_candle_pdi)}")
+                else:
+                    positions_logger.debug(f"\t\tInvestigating base candle at {base_candle_pdi}")
+
                 # The reentry window dataframe is used to check whether the price returned to the box in the span between the exit candle and the LPL
                 # breaking candle. This is checked using the check_reentry_condition() method of the OrderBlock object. The reentry dataframe is
                 # passed as an argument to the method.
                 if ob.price_exit_index is not None:
                     reentry_check_window: pd.DataFrame = algo.pair_df.iloc[ob.price_exit_index + 1:self.ob_formation_start_pdi]
 
+                    # Log the exit candle location
+                    if constants.logs_format == "time":
+                        positions_logger.debug(
+                            f"\t\t\tExit candle found at {algo.convert_pdis_to_times(ob.price_exit_index)}")
+                    else:
+                        positions_logger.debug(f"\t\t\tExit candle found at {ob.price_exit_index}")
+
+                    if constants.logs_format == "time":
+                        positions_logger.debug(
+                            f"\t\t\tReentry check window set up from {algo.convert_pdis_to_times(ob.price_exit_index + 1)} to {algo.convert_pdis_to_times(self.ob_formation_start_pdi - 1)}")
+                    else:
+                        positions_logger.debug(
+                            f"\t\t\tReentry check window set up from {ob.price_exit_index + 1} to {self.ob_formation_start_pdi - 1}")
+
                 # This else statement is implemented to account for boxes which don't have an exit candle which opens inside and closes outside of
                 # them, automatically making them invalid and prompting considering another replacement.
                 else:
+                    positions_logger.debug("\t\t\tNo exit candle found. OB is invalid, looking for a replacement further in time.")
                     continue
 
                 # This check ensures that the order block being processed is totally valid to be used AFTER the formation of the pattern, that means
@@ -122,7 +164,11 @@ class Segment:
                 ob.check_fvg_condition()
                 ob.check_stop_break_condition()
 
+                positions_logger.debug(f"\t\t\tReentry check status: {ob.has_reentry_condition}")
+                positions_logger.debug(f"\t\t\tFVG check status: {ob.has_fvg_condition} ({ob.fvg_fail_message})")
+                positions_logger.debug(f"\t\t\tStop break check status: {ob.has_stop_break_condition}")
                 if ob.has_reentry_condition and ob.has_fvg_condition and ob.has_stop_break_condition:
+                    positions_logger.debug(f"\t\t\tAll checks passed, adding OB with ID {ob.id}")
                     valid_ob_counter += 1
 
                     ob.ranking_within_segment = valid_ob_counter
@@ -133,6 +179,10 @@ class Segment:
                     break
 
                 else:
+                    positions_logger.debug("\t\t\tOne or more checks didn't pass, moving to next candle...")
                     ob.has_been_replaced = True
 
                 times_moved += 1
+
+        positions_logger.debug(f"End of finding order blocks for segment {self.id}")
+        positions_logger.debug("")
