@@ -3,9 +3,7 @@ import pandas as pd
 from typing import Optional, List, Union
 
 from algo_code.datatypes import Pivot, Candle
-from algo_code.general_utils import get_mock_pair_data
 from algo_code.segment import Segment
-from utils import constants
 
 
 class Algo:
@@ -544,5 +542,3 @@ class Algo:
             return times[0]
 
         return list(times)
-
-
