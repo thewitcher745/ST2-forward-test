@@ -3,6 +3,7 @@ import pandas as pd
 
 import algo_code.position_prices_setup as setup
 
+
 class Position:
     def __init__(self, parent_ob):
         self.parent_ob = parent_ob
@@ -28,4 +29,3 @@ class Position:
 
         # Set up the target list nd stoploss using a function which operates on the "self" object and directly manipulates the instance.
         setup.default_357(self)
-
