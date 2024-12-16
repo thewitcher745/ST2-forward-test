@@ -24,7 +24,11 @@ def get_pair_data(symbol: str, start_time: pd.Timestamp) -> pd.DataFrame:
     timeframe_seconds = pd.Timedelta(constants.timeframe).total_seconds()
     start_time = int(start_time.timestamp() * 1000)
 
-    url = f"https://api.binance.com/api/v3/klines"
+    if constants.market_type == "futures":
+        url = f"https://fapi.binance.com/fapi/v1/klines"
+    elif constants.market_type == "spot":
+        url = f"https://api.binance.com/api/v3/klines"
+
     params = {
         "symbol": symbol,
         "interval": constants.timeframe,

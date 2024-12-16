@@ -5,6 +5,7 @@ params = dotenv_values("./.env.params")
 start_times = dotenv_values("./.env.starttimes")
 
 mode = credentials["MODE"]
+market_type = params["market_type"]
 
 # The lower order timeframe
 timeframe = params['timeframe']
