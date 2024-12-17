@@ -1,4 +1,4 @@
-import utils.constants
+import utils.constants as constants
 
 
 def default_357(position):
