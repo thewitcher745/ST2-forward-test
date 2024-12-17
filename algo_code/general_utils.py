@@ -213,3 +213,7 @@ def find_higher_timeframe(lower_timeframe):
     for i, key in enumerate(constants.timeframe_minutes.keys()):
         if key == lower_timeframe:
             return list(constants.timeframe_minutes.keys())[i + constants.higher_timeframe_skip_interval]
+
+
+def make_set_width(string):
+    return string.ljust(12)

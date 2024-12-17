@@ -7,7 +7,7 @@ from utils.initialize import initialize, initiate_pair_list
 from algo_code.algo import Algo
 from algo_code.segment import Segment
 from algo_code.position import Position
-from algo_code.general_utils import get_pair_data, find_higher_timeframe, get_pairs_start_data, get_pairs_data_parallel
+from algo_code.general_utils import get_pair_data, find_higher_timeframe, get_pairs_start_data, get_pairs_data_parallel, make_set_width
 from utils.logger import logger
 import utils.constants as constants
 
@@ -53,21 +53,17 @@ while True:
             h_o_starting_point: int = int(algo.zigzag_df.iloc[0].pdi)
         except:
             logger.warning(
-                f"\t{pair_name}\tThe starting point entered isn't a lower order zigzag pivot... Consider changing the starting point. "
+                f"\t{make_set_width(pair_name)}\tThe starting point entered isn't a lower order zigzag pivot... Consider changing the starting point. "
                 f"Skipping the pair...")
             continue
 
-        # try:
         algo.calc_h_o_zigzag(starting_point_pdi=h_o_starting_point)
-        # except Exception as e:
-        #     logger.warning(f"\t{pair_name}\tError calculating HO zigzag: {e}")
-        #     continue
 
         try:
             # The last segment found by the code
             latest_segment: Segment = algo.segments[-1]
         except IndexError:
-            logger.debug(f"\t{pair_name}\tNo segments found, skipping the pair...")
+            logger.debug(f"\t{make_set_width(pair_name)}\tNo segments found, skipping the pair...")
             continue
 
         # If the latest segment's start time is newer than the start time of the segment registered when the positions were found (Or if we are
@@ -79,16 +75,16 @@ while True:
 
         # If we are not in a new segment, and we aren't starting with no positions, we can skip the rest of the code for this pair.
         if not is_new_segment_found and not is_starting_fresh:
-            logger.debug(f"\t{pair_name}\tNo new segment found, no updates made.")
+            logger.debug(f"\t{make_set_width(pair_name)}\tNo new segment found, no updates made.")
             continue
 
         # If there is a new segment, the rest of the code will execute, but also the positions found in the previous segment will be canceled.
         else:
             if is_starting_fresh:
-                logger.info(f"\t{pair_name}\tNo Prior latest segment history, starting fresh...")
+                logger.info(f"\t{make_set_width(pair_name)}\tNo Prior latest segment history, starting fresh...")
 
             elif is_new_segment_found:
-                logger.info(f"\t{pair_name}\tNew segment found, canceling prior positions...")
+                logger.info(f"\t{make_set_width(pair_name)}\tNew segment found, canceling prior positions...")
 
             for position in positions_info_dict[pair_name]["positions"]:
                 position.cancel_position()
@@ -99,7 +95,7 @@ while True:
             # Regardless o whether any positions are found or not in the future lines, we need to register the latest segment.
             positions_info_dict[pair_name]["latest_segment_start_time"] = algo.convert_pdis_to_times(latest_segment.start_pdi)
 
-            logger.debug(f"\t{pair_name}\tLatest segment start time registered: {positions_info_dict[pair_name]['latest_segment_start_time']}")
+            logger.debug(f"\t{make_set_width(pair_name)}\tLatest segment start time registered: {positions_info_dict[pair_name]['latest_segment_start_time']}")
 
         # If the latest segment is finished (Which it should have, since segments only register once the end condition is met), find the leg which the
         # positions should form on.
@@ -180,7 +176,7 @@ while True:
                             # Add the found position to the list of positions for this pair, and set the latest segment start time to the time of the
                             # latest segment's start time at the time of finding the positions.
                             positions_info_dict[pair_name]["positions"].append(ob.position)
-                            logger.info(f"\t{pair_name}\tPosition found, OBID {ob.id}")
+                            logger.info(f"\t{make_set_width(pair_name)}\tPosition found, OBID {ob.id}")
 
                             break
 
