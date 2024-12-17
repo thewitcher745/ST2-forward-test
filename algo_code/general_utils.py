@@ -19,33 +19,42 @@ def get_pair_data(symbol: str, start_time: pd.Timestamp) -> pd.DataFrame:
         pd.DataFrame: DataFrame containing the historical kline data.
     """
 
-    # Calculate the start time based on the current time and the number of candles
-    end_time = int(time.time() * 1000)  # Current time in milliseconds
+    # Convert start_time to milliseconds
+    start_time_ms = int(start_time.timestamp() * 1000)
+    end_time_ms = int(time.time() * 1000)  # Current time in milliseconds
     timeframe_seconds = pd.Timedelta(constants.timeframe).total_seconds()
-    start_time = int(start_time.timestamp() * 1000)
+    max_candles = 1000
 
     if constants.market_type == "futures":
         url = f"https://fapi.binance.com/fapi/v1/klines"
     elif constants.market_type == "spot":
         url = f"https://api.binance.com/api/v3/klines"
 
-    params = {
-        "symbol": symbol,
-        "interval": constants.timeframe,
-        "startTime": start_time,
-        "endTime": end_time,
-    }
+    all_data = []
 
-    try:
-        # Fetch historical kline data
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        data = response.json()
-    except Exception as e:
-        raise RuntimeError(f"Error fetching historical klines: {e}")
+    while start_time_ms < end_time_ms:
+        params = {
+            "symbol": symbol,
+            "interval": constants.timeframe,
+            "startTime": start_time_ms,
+            "endTime": end_time_ms,
+            "limit": max_candles
+        }
+
+        try:
+            # Fetch historical kline data
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            if not data:
+                break
+            all_data.extend(data)
+            start_time_ms = data[-1][0] + 1  # Move to the next timestamp after the last one fetched
+        except Exception as e:
+            raise RuntimeError(f"Error fetching historical klines: {e}")
 
     # Convert UNIX timestamp to UTC time format and create DataFrame
-    data = [[datetime.datetime.utcfromtimestamp(row[0] / 1000)] + row[1:5] for row in data]
+    data = [[datetime.datetime.utcfromtimestamp(row[0] / 1000)] + row[1:5] for row in all_data]
     pair_df = pd.DataFrame(data, columns=["time", "open", "high", "low", "close"])
     pair_df['candle_color'] = pair_df.apply(lambda row: 'green' if row.close > row.open else 'red', axis=1)
 
