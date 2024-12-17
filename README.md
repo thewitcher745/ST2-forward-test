@@ -25,6 +25,7 @@ This project is designed to forward test the ST5 strategy. In its current state,
 - **Higher Order Zigzag**: The project can also draw the higher order zigzag on the pair data, based on the previously drawn LO zigzag.
 - **Segment finding**: The project can find segments for a list of pairs in which order blocks are detected.
 - **Signal finding**: The project can find signals for a list of pairs based on the ST5 strategy.
+- **Signal posting and cancelling**: The project can post signals to a Telegram channel.
 
 ### Logging
 
@@ -71,3 +72,11 @@ python main.py
 - Major update, added finding signals (single loop currently, not perpetually running), posting signals to Telegram channels, validation mode for
   signals
 - Replaced the mock API with actual live Binance API, to be replaced with websocket connection to Binance.
+
+#### ver b0.2.1
+
+- Added signal cancellation in the event a new segment is found, or if no runs of the algorithm have been done prior.
+- Added parallelized data fetching using concurrency. The data fetching now happens once per main loop, instead of once for every pair, cutting data
+  fetching time by almost 75%.
+- Added better logging capabilities with tabs and cleaner output.
+- Improve error handling with logger outputs for different exceptions.

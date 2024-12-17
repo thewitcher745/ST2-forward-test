@@ -6,7 +6,7 @@ from utils.initialize import initialize, initiate_pair_list
 from algo_code.algo import Algo
 from algo_code.segment import Segment
 from algo_code.position import Position
-from algo_code.general_utils import get_pair_data, find_higher_timeframe, get_pair_start_data
+from algo_code.general_utils import get_pair_data, find_higher_timeframe, get_pairs_start_data, get_pairs_data_parallel
 from utils.logger import logger
 import utils.constants as constants
 
@@ -23,13 +23,26 @@ for pair_name in pair_list:
     positions_info_dict[pair_name]["positions"] = []
     positions_info_dict[pair_name]["latest_segment_start_time"] = None
 
-while True:
-    for pair_name in pair_list:
-        start_data = get_pair_start_data(pair_name)
-        start_time: pd.Timestamp = start_data["start_time"]
-        starting_pivot_type: str = start_data["starting_pivot_type"]
+#  Initializing the starting data
+pairs_start_data = get_pairs_start_data(pair_list)
+pairs_start_times = {pair_name: pairs_start_data[pair_name]["start_time"] for pair_name in pairs_start_data.keys()}
+paits_starting_pivot_types = {pair_name: pairs_start_data[pair_name]["starting_pivot_type"] for pair_name in pairs_start_data.keys()}
 
-        pair_df: pd.DataFrame = get_pair_data(pair_name, start_time)
+while True:
+    # Get the data for all the pairs in parallel. Data for each pair is stored as the value and as a pd.DataFrame.
+    try:
+        pairs_data: dict[str, pd.DataFrame] = get_pairs_data_parallel(pair_list, pairs_start_times)
+    except Exception as e:
+        logger.warning(f"Error fetching data for pairs: {e}... skipping an iteration...")
+        continue
+
+    for pair_name in pair_list:
+        start_data = pairs_start_data[pair_name]
+        start_time: pd.Timestamp = pairs_start_times[pair_name]
+        starting_pivot_type: str = paits_starting_pivot_types[pair_name]
+
+        pair_df: pd.DataFrame = pairs_data[pair_name]
+
         latest_candle = pair_df.iloc[-1]
 
         algo = Algo(pair_df=pair_df, symbol=pair_name, timeframe=constants.timeframe)
@@ -38,9 +51,16 @@ while True:
         try:
             h_o_starting_point: int = int(algo.zigzag_df.iloc[0].pdi)
         except:
+            logger.warning(
+                f"\t{pair_name}\tThe starting point entered isn't a lower order zigzag pivot... Consider changing the starting point. "
+                f"Skipping the pair...")
             continue
 
+        # try:
         algo.calc_h_o_zigzag(starting_point_pdi=h_o_starting_point)
+        # except Exception as e:
+        #     logger.warning(f"\t{pair_name}\tError calculating HO zigzag: {e}")
+        #     continue
 
         # The last segment found by the code
         latest_segment: Segment = algo.segments[-1]
@@ -73,6 +93,8 @@ while True:
 
             # Regardless o whether any positions are found or not in the future lines, we need to register the latest segment.
             positions_info_dict[pair_name]["latest_segment_start_time"] = algo.convert_pdis_to_times(latest_segment.start_pdi)
+
+            logger.debug(f"\t{pair_name}\tLatest segment start time registered: {positions_info_dict[pair_name]['latest_segment_start_time']}")
 
         # If the latest segment is finished (Which it should have, since segments only register once the end condition is met), find the leg which the
         # positions should form on.
@@ -153,6 +175,6 @@ while True:
                             # Add the found position to the list of positions for this pair, and set the latest segment start time to the time of the
                             # latest segment's start time at the time of finding the positions.
                             positions_info_dict[pair_name]["positions"].append(ob.position)
-                            logger.info(f"\t{pair_name}\tPosition found, OBID {ob}")
+                            logger.info(f"\t{pair_name}\tPosition found, OBID {ob.id}")
 
                             break
