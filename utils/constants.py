@@ -28,3 +28,5 @@ timeframe_minutes = {
 mock_api_url = credentials["MOCK_API_URL"]
 
 num_pairs_engaged = params["num_pairs_engaged"]
+
+stoploss_coeff: float = float(params["stoploss_coeff"])
