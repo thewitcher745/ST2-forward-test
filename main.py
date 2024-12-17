@@ -62,8 +62,12 @@ while True:
         #     logger.warning(f"\t{pair_name}\tError calculating HO zigzag: {e}")
         #     continue
 
-        # The last segment found by the code
-        latest_segment: Segment = algo.segments[-1]
+        try:
+            # The last segment found by the code
+            latest_segment: Segment = algo.segments[-1]
+        except IndexError:
+            logger.warning(f"\t{pair_name}\tNo segments found, skipping the pair...")
+            continue
 
         # If the latest segment's start time is newer than the start time of the segment registered when the positions were found (Or if we are starting
         # fresh with no latest_segment registered), that means the old segment has been invalidated by a new segment forming.
@@ -178,3 +182,4 @@ while True:
                             logger.info(f"\t{pair_name}\tPosition found, OBID {ob.id}")
 
                             break
+   
