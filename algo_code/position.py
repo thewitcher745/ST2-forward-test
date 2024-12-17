@@ -32,6 +32,10 @@ class Position:
         # Set up the target list nd stoploss using a function which operates on the "self" object and directly manipulates the instance.
         setup.default_357(self)
 
+        # This variable will be assigned a value once the position is posted to the channel. The value will be used to cancel it once the segment
+        # containing the position expires.
+        self.message_id = None
+
     def compose_signal_message(self, symbol, validation_data: dict):
         symbol_for_signal = symbol.replace("USDT", "/USDT")
         message = f"""⚡️⚡️ #{symbol_for_signal} ⚡️⚡️
@@ -61,4 +65,7 @@ Entry Targets:
 
     def post_to_channel(self, symbol, validation_data: dict):
         message = self.compose_signal_message(symbol, validation_data)
-        post_message(message)
+        return post_message(message)
+
+    def cancel_position(self):
+        post_message("Cancel", self.message_id)
