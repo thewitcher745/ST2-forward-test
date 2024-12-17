@@ -164,7 +164,14 @@ class Algo:
         # Breaking and extension pdi and values represent the values to surpass for registering a higher high (extension) of a lower low (breaking)
         breaking_pdi = search_window_start_pdi
         breaking_value: float = starting_pivot.pivot_value
-        extension_pdi = self.find_relative_pivot(search_window_start_pdi, 1)
+
+        try:
+            extension_pdi = self.find_relative_pivot(search_window_start_pdi, 1)
+
+        # If a next extension pivot isn't found, that means no breaking has occurred.
+        except IndexError:
+            return None
+
         extension_value: float = self.zigzag_df.loc[self.zigzag_df.pdi == extension_pdi].iloc[0].pivot_value
 
         check_start_pdi = self.find_relative_pivot(search_window_start_pdi, 2)
