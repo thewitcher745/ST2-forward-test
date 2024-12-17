@@ -7,6 +7,7 @@ start_times = dotenv_values("./.env.starttimes")
 mode = credentials["MODE"]
 validation_mode = True if params["validation_mode"].lower() == "true" else False
 market_type = params["market_type"]
+main_loop_interval = int(params["main_loop_interval"])
 
 # The lower order timeframe
 timeframe = params['timeframe']

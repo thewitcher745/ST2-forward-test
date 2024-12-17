@@ -1,5 +1,6 @@
 import pandas as pd
 import datetime
+import time
 
 from algo_code.order_block import OrderBlock
 from utils.initialize import initialize, initiate_pair_list
@@ -66,11 +67,11 @@ while True:
             # The last segment found by the code
             latest_segment: Segment = algo.segments[-1]
         except IndexError:
-            logger.warning(f"\t{pair_name}\tNo segments found, skipping the pair...")
+            logger.debug(f"\t{pair_name}\tNo segments found, skipping the pair...")
             continue
 
-        # If the latest segment's start time is newer than the start time of the segment registered when the positions were found (Or if we are starting
-        # fresh with no latest_segment registered), that means the old segment has been invalidated by a new segment forming.
+        # If the latest segment's start time is newer than the start time of the segment registered when the positions were found (Or if we are
+        # starting fresh with no latest_segment registered), that means the old segment has been invalidated by a new segment forming.
         # In this case, the existing positions (if any) should be canceled and new ones should be posted or awaited.
         is_starting_fresh: bool = positions_info_dict[pair_name]["latest_segment_start_time"] is None
         is_new_segment_found: bool = is_starting_fresh or algo.convert_pdis_to_times(latest_segment.start_pdi) > positions_info_dict[pair_name][
@@ -182,4 +183,5 @@ while True:
                             logger.info(f"\t{pair_name}\tPosition found, OBID {ob.id}")
 
                             break
-   
+
+    time.sleep(constants.main_loop_interval)
