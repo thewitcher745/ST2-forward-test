@@ -161,7 +161,6 @@ class Algo:
 
         starting_pivot = self.zigzag_df[self.zigzag_df.pdi == search_window_start_pdi].iloc[0]
         trend_type = "ascending" if starting_pivot.pivot_type == "valley" else "descending"
-
         # Breaking and extension pdi and values represent the values to surpass for registering a higher high (extension) of a lower low (breaking)
         breaking_pdi = search_window_start_pdi
         breaking_value: float = starting_pivot.pivot_value
