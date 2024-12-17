@@ -29,3 +29,27 @@ class Position:
 
         # Set up the target list nd stoploss using a function which operates on the "self" object and directly manipulates the instance.
         setup.default_357(self)
+
+    def compose_signal_message(self, symbol, validation_data: dict):
+        symbol_for_signal = symbol.replace("USDT", "/USDT")
+        message = f"""⚡️⚡️ #{symbol_for_signal} ⚡️⚡️
+Exchanges: Binance Futures
+Signal Type: Regular ({self.type})
+Leverage: Isolated (20.0X)
+
+Entry Targets:
+"""
+
+        message += f"1) {float(self.entry_price)}\n"
+
+        message += "\nTake-Profit Targets: \n"
+
+        for target_id, target in enumerate(self.target_list):
+            message += f"{target_id + 1}) {target} \n"
+
+        message += "\nStop Targets: \n"
+        message += f"1) {self.stoploss}\n"
+        return message
+    def post_to_channel(self, symbol, validation_data: dict):
+        message = self.compose_signal_message(symbol, validation_data)
+        post_message(message)
