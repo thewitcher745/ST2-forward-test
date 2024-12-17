@@ -49,7 +49,14 @@ Entry Targets:
 
         message += "\nStop Targets: \n"
         message += f"1) {self.stoploss}\n"
+
+        if constants.validation_mode:
+            message += f"\nBase candle:\n{self.parent_ob.base_candle}\n"
+            message += f"\nSignal activation time: \n{validation_data['activation_time']}\n"
+            message += f"\nBroken LPL time: \n{validation_data['broken_lpl']}\n"
+
         return message
+
     def post_to_channel(self, symbol, validation_data: dict):
         message = self.compose_signal_message(symbol, validation_data)
         post_message(message)
