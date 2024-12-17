@@ -541,3 +541,99 @@ class Algo:
             return times[0]
 
         return list(times)
+
+    # _____________________________________________________________________________________________
+    # Forward-test specific utilities
+    def find_position_search_window(self, latest_segment: Segment) -> Union[None, dict[str, int]]:
+        """
+        This method will use the direction and the formation type of the latest segment found in the pattern to determine the search window for the
+        positions to be posted.
+
+        If the latest segment has a BOS formation type, that means the direction of the trend has not changed, and we can
+        continue with the positions in the same direction. The search window will be from the second-to-last higher order pivot to the first broken
+        LPL after the last segment, aka on the last-found-leg of the higher order zigzag, up to the broken LPL. The position type will be determined
+        based on the trend direction.
+        If the latest segment was formed with a CHOCH break, that means the direction is now reversed. The algorithm will try to find positions
+        starting from the last higher order pivot to the first broken LPL after the last segment. The position type will be determined based on the
+        direction of the latest segment, as in it will be the reverse of that direction.
+
+        The same checks and conditions as the order-block-finding algorithm in the segments will be applied, with one
+        caveat: The condition and reentry check window won't be limited to the breaking LPL, aka the conditions will not just be checked for the
+        period of the last higher order leg, instead the upper bound of the condition check window will be the last fond candle. This is especially
+        important in the reentry check, since an order block which has already been entered, even after the formation check window, would be invalid
+        for posting in the channel, since the entry has already been made. This may later be overridden by introducing "bounces" for each order block,
+        similar to ST2.
+
+        Args:
+            latest_segment (Segment): The latest segment found by the algorithm, which determines where the position-forming HO zigzag leg will be
+                                      located.
+
+        Returns:
+            None: The method returns None if no broken/breaking LPL is found. This would mean that the higher order leg hasn't formed yet. This should
+                  logically only happen in the case of a CHOCH formation for the latest segment, since with a BOS formation the leg has already formed
+                  so the broken LPL already exists.
+
+            Dict: A dict containing the PDI's of the search window's start and end, and the PDI of the activation threshold, keys "start", "end",
+                  "activation_threshold".
+
+        """
+
+        # If the latest segment was formed from a BOS break, that means the direction hasn't changed. So the latest found leg (of the same direction)
+        # is still valid. The start of the position search would be the second-to-last higher order zigzag pivot, and the end of it would be the LPL
+        # that is broken.
+        if latest_segment.formation_method == "bos":
+            position_search_start_pdi: int = self.h_o_indices[-2]
+
+            # The pivot types we need are linked to the trend direction, which in the case of a BOS formation type, would be in the same as the latest
+            # segment. We need the correct pivot type to use the detect_first_broken_lpl method correctly.
+            pivot_type = "valley" if latest_segment.type == "ascending" else "peak"
+            pivots_of_type_before_closing_candle = self.zigzag_df[(self.zigzag_df.pivot_type == pivot_type)
+                                                                  & (self.zigzag_df.pdi <= latest_segment.end_pdi)]
+
+            # The detect_first_broken_lpl method returns two things as a tuple: 1) The LPL that was broken 2) The PDI of the candle that broke the
+            # LPL.
+            broken_lpl_data = self.detect_first_broken_lpl(pivots_of_type_before_closing_candle.iloc[-1].pdi)
+
+            # The end of the search window is set as the first broken LPL AFTER the LAST LOW before the end of the last segment.
+            # If the detect_first_broken_lpl method returns a value, that means a broken LPL has been found. If not, the method returns None,
+            # signaling that no broken LPL was found. In the case of a BOS formation type, this wouldn't normally happen.
+            if broken_lpl_data:
+                position_search_end_pdi: int = broken_lpl_data[0].pdi
+
+                # The positions should only be activated after the LPL has been broken by a candle.
+                position_activation_threshold: int = broken_lpl_data[1]
+
+                return {
+                    "start": position_search_start_pdi,
+                    "end": position_search_end_pdi,
+                    "activation_threshold": position_activation_threshold
+                }
+
+            else:
+                return None
+
+        # In the case of a CHOCH formation in the latest segment, the direction has changed. The search window will be from the last higher order
+        # zigzag pivot to the first broken LPL after the last segment. The position type will be the reverse of the latest segment's direction. All
+        # other details are the same as a BOS formation.
+        else:
+            position_search_start_pdi: int = self.h_o_indices[-1]
+
+            pivot_type = "peak" if latest_segment.type == "ascending" else "valley"
+            pivots_of_type_before_closing_candle = self.zigzag_df[(self.zigzag_df.pivot_type == pivot_type)
+                                                                  & (self.zigzag_df.pdi <= latest_segment.end_pdi)]
+            broken_lpl_data = self.detect_first_broken_lpl(pivots_of_type_before_closing_candle.iloc[-1].pdi)
+
+            if broken_lpl_data:
+                position_search_end_pdi: int = broken_lpl_data[0].pdi
+
+                # The positions should only be activated after the LPL has been broken by a candle.
+                position_activation_threshold: int = broken_lpl_data[1]
+
+                return {
+                    "start": position_search_start_pdi,
+                    "end": position_search_end_pdi,
+                    "activation_threshold": position_activation_threshold
+                }
+
+            else:
+                return None
