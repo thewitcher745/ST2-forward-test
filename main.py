@@ -44,6 +44,13 @@ while True:
 
         pair_df: pd.DataFrame = pairs_data[pair_name]
 
+        # If the API fails to respond, instead of the dataframe in the API response there will be None. If this happens, the algo moves on to the next
+        # pair in the list and tries the failed pair again in the next iteration.
+
+        if pair_df is None:
+            logger.warning(f"\t{make_set_width(pair_name)}\tNo data for pair found. The fetching most likely failed. Skipping...")
+            continue
+
         latest_candle = pair_df.iloc[-1]
 
         algo = Algo(pair_df=pair_df, symbol=pair_name, timeframe=constants.timeframe)

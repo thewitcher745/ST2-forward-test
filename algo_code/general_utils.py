@@ -21,7 +21,7 @@ def get_pairs_data_parallel(symbols: list, start_times: dict) -> dict:
         dict: Dictionary containing the historical kline data for each symbol.
     """
 
-    def fetch_data_for_symbol(symbol):
+    def fetch_data_for_symbol(symbol) -> pd.DataFrame | None:
         # Convert start_time to milliseconds
         start_time = start_times[symbol]
         start_time_ms = int(start_time.timestamp() * 1000)
@@ -56,7 +56,7 @@ def get_pairs_data_parallel(symbols: list, start_times: dict) -> dict:
                 all_data.extend(data)
                 current_start_time_ms = data[-1][0] + 1  # Move to the next timestamp after the last one fetched
             except Exception as e:
-                raise RuntimeError(f"Error fetching historical klines for {symbol}: {e}")
+                return None
 
         # Convert UNIX timestamp to UTC time format and create DataFrame
         data = [[datetime.datetime.utcfromtimestamp(row[0] / 1000)] + row[1:5] for row in all_data]
@@ -79,7 +79,7 @@ def get_pairs_data_parallel(symbols: list, start_times: dict) -> dict:
     return all_pairs_data
 
 
-def get_pair_data(symbol: str, start_time: pd.Timestamp) -> pd.DataFrame:
+def get_pair_data(symbol: str, start_time: pd.Timestamp) -> pd.DataFrame | None:
     """
     Fetch the last N historical kline data for a given symbol and return it as a DataFrame.
 
@@ -123,7 +123,7 @@ def get_pair_data(symbol: str, start_time: pd.Timestamp) -> pd.DataFrame:
             all_data.extend(data)
             start_time_ms = data[-1][0] + 1  # Move to the next timestamp after the last one fetched
         except Exception as e:
-            raise RuntimeError(f"Error fetching historical klines: {e}")
+            return None
 
     # Convert UNIX timestamp to UTC time format and create DataFrame
     data = [[datetime.datetime.utcfromtimestamp(row[0] / 1000)] + row[1:5] for row in all_data]
