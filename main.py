@@ -148,7 +148,12 @@ while True:
 
                         # If a valid exit candle is found, form the reentry check window.
                         if ob.price_exit_index is not None:
-                            reentry_check_window: pd.DataFrame = algo.pair_df.iloc[ob.price_exit_index + 1:position_activation_threshold]
+                            # In validation mode, the algorithm won't avoid posting positions that have been entered by price movements after the
+                            # activation threshold, therefore the positions can be more thoroughly examined.
+                            if constants.validation_mode:
+                                reentry_check_window: pd.DataFrame = algo.pair_df.iloc[ob.price_exit_index + 1:position_activation_threshold]
+                            else:
+                                reentry_check_window: pd.DataFrame = algo.pair_df.iloc[ob.price_exit_index + 1:]
 
                         # If no exit candle is found, that means that order block isn't valid, and the search for a valid OB must continue with
                         # the next candle.
@@ -158,7 +163,10 @@ while True:
                         # Order block condition checks
                         ob.check_reentry_condition(reentry_check_window)
 
-                        conditions_check_window: pd.DataFrame = algo.pair_df[ob.start_index:position_activation_threshold]
+                        if constants.validation_mode:
+                            conditions_check_window: pd.DataFrame = algo.pair_df[ob.start_index:position_activation_threshold]
+                        else:
+                            conditions_check_window: pd.DataFrame = algo.pair_df[ob.start_index:]
                         ob.set_condition_check_window(conditions_check_window)
                         ob.check_fvg_condition()
                         ob.check_stop_break_condition()

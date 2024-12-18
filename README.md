@@ -6,19 +6,20 @@ The forward testing code for strategy 5 (ST5).
 
 This project is designed to forward test the ST5 strategy. In its current state, the project can:
 
-1. Retrieve pair data from a mock API, developed and documented separately.
+1. Retrieve pair data from a mock API or a live data server (Binance, currently), in parallelized fashion.
 2. Draw the lower order zigzag on the data, given the starting date specified in a `.env` file.
 3. Draw the higher order zigzag on the data.
 4. Find the segments for a list of pairs provided through a CSV file.
 5. Log various activities using a customized logging module.
 6. Find signals for a list of pairs based on the ST5 strategy.
+7. Selectively run in validation mode, which adds extra debug data to the signals, as well as other features useful for debugging.
 
 ### Data Retrieval
 
-- The project can fetch pair data for pairs listed in a `pair_list.csv` file from the Binance API. This is useful for testing and development purposes
-  without relying on live, exchanged-based data.
+- The project can use both mock data from an offline cache, or live Binance data. The live data fetching is done in parallel and in bulk to improve
+  performance.
 
-### Zigzag Drawing
+### Zigzag-based signal generation
 
 - **Lower Order Zigzag**: The project can draw the lower order zigzag on the pair data. The starting date for this operation is specified in a `.env`
   file.
@@ -30,8 +31,6 @@ This project is designed to forward test the ST5 strategy. In its current state,
 ### Logging
 
 - The project includes a customized logging module that logs various activities and events, aiding in debugging and monitoring.
-
-## Future Features
 
 ### Telegram Integration
 
@@ -80,3 +79,9 @@ python main.py
   fetching time by almost 75%.
 - Added better logging capabilities with tabs and cleaner output.
 - Improve error handling with logger outputs for different exceptions.
+
+#### ver b0.2.2
+
+- Extended validation mode. In its current state, enabling validation mode will cause the algorithm to also post positions that have been entered by
+  the candles located after the activation threshold. This enables the user to see what positions were potentially missed by running the algorithm
+  late, and what positions would have been entered and possibly profitted off of if the algorithm was running in real time.
