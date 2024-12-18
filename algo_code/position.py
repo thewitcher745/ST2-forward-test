@@ -60,6 +60,7 @@ Entry Targets:
             message += f"\nBase candle:\n{self.parent_ob.base_candle}\n"
             message += f"\nSignal activation time: \n{validation_data['activation_time']}\n"
             message += f"\nBroken LPL time: \n{validation_data['broken_lpl']}\n"
+            message += f"\nSearch window: \n{validation_data['position_search_window'][0]} to {validation_data['position_search_window'][1]}\n"
 
         return message
 

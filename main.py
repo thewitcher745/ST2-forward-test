@@ -178,6 +178,7 @@ while True:
                             validation_data = {
                                 "activation_time": algo.pair_df.iloc[position_activation_threshold].time,
                                 "broken_lpl": algo.pair_df.iloc[position_search_end_pdi].time,
+                                "position_search_window": algo.convert_pdis_to_times([position_search_start_pdi, position_search_end_pdi])
                             }
                             ob.position.message_id = ob.position.post_to_channel(pair_name, validation_data)
 
