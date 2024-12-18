@@ -28,10 +28,11 @@ def post_message(message: str, reply_id: int = None):
             f'https://api.telegram.org/bot{constants.credentials["BOT_TOKEN"]}/sendMessage', json=payload).json()
 
         if response.get("ok"):
+            time.sleep(3)
             return response["result"]["message_id"]
+
         else:
             logger.error(f"Failed to post message: {response['description']}. Retrying...")
-            time.sleep(1)
 
 
 def get_channel_name(channel_id: int):
