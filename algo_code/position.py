@@ -61,6 +61,8 @@ Entry Targets:
             message += f"\nSignal activation time: \n{validation_data['activation_time']}\n"
             message += f"\nBroken LPL time: \n{validation_data['broken_lpl']}\n"
             message += f"\nSearch window: \n{validation_data['position_search_window'][0]} to {validation_data['position_search_window'][1]}\n"
+            message += f"\nLatest segment: \n{validation_data['latest_segment_bounds'][0]} to {validation_data['latest_segment_bounds'][1]}\n"
+            message += f"\nLatest segment HO pivots: \n{validation_data['latest_segment_ho_pivots']}\n"
 
         return message
 
