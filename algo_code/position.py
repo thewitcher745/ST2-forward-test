@@ -37,7 +37,7 @@ class Position:
         self.message_id = None
 
     def compose_signal_message(self, symbol, validation_data: dict):
-        symbol_for_signal = symbol.replace("USDT", "/USDT")
+        symbol_for_signal = symbol.replace("US", "/US")
         message = f"""⚡️⚡️ #{symbol_for_signal} ⚡️⚡️
 Exchanges: Binance Futures
 Signal Type: Regular ({self.type})
