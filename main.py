@@ -1,13 +1,11 @@
 import pandas as pd
-import datetime
 import time
 
-from algo_code.order_block import OrderBlock
-from utils.initialize import initialize, initiate_pair_list
+from utils.initialize import initiate_pair_list
 from algo_code.algo import Algo
 from algo_code.segment import Segment
 from algo_code.position import Position
-from algo_code.general_utils import get_pair_data, find_higher_timeframe, get_pairs_start_data, get_pairs_data_parallel, make_set_width
+from algo_code.general_utils import get_pairs_start_data, get_pairs_data_parallel, make_set_width
 from utils.logger import logger
 import utils.constants as constants
 
@@ -25,47 +23,40 @@ for pair_name in pair_list:
     positions_info_dict[pair_name]["latest_segment_start_time"] = None
 
 #  Initializing the starting data
-pairs_start_data = get_pairs_start_data(pair_list)
-pairs_start_times = {pair_name: pairs_start_data[pair_name]["start_time"] for pair_name in pairs_start_data.keys()}
-paits_starting_pivot_types = {pair_name: pairs_start_data[pair_name]["starting_pivot_type"] for pair_name in pairs_start_data.keys()}
+pairs_start_times, pairs_starting_pivot_types = get_pairs_start_data(pair_list)
 
 while True:
-    # Get the data for all the pairs in parallel. Data for each pair is stored as the value and as a pd.DataFrame.
-    try:
-        pairs_data: dict[str, pd.DataFrame] = get_pairs_data_parallel(pair_list, pairs_start_times)
-    except Exception as e:
-        logger.warning(f"Error fetching data for pairs: {e}... skipping an iteration...")
-        continue
+    # Get the data for all the pairs in parallel. Data for each pair is stored as the value and as a pd.DataFrame. Error handling is done per-pair
+    # further down.
+    pairs_data: dict[str, pd.DataFrame] = get_pairs_data_parallel(pair_list, pairs_start_times)
 
     for pair_name in pair_list:
-        start_data = pairs_start_data[pair_name]
         start_time: pd.Timestamp = pairs_start_times[pair_name]
-        starting_pivot_type: str = paits_starting_pivot_types[pair_name]
+        starting_pivot_type: str = pairs_starting_pivot_types[pair_name]
 
         pair_df: pd.DataFrame = pairs_data[pair_name]
 
         # If the API fails to respond, instead of the dataframe in the API response there will be None. If this happens, the algo moves on to the next
         # pair in the list and tries the failed pair again in the next iteration.
-
         if pair_df is None:
             logger.warning(f"\t{make_set_width(pair_name)}\tNo data for pair found. The fetching most likely failed. Skipping...")
             continue
 
         latest_candle = pair_df.iloc[-1]
 
-        algo = Algo(pair_df=pair_df, symbol=pair_name, timeframe=constants.timeframe)
+        # HO zigzag calculations __________________________________________________________________
+        algo = Algo(pair_df=pair_df, symbol=pair_name)
         algo.init_zigzag(last_pivot_type=starting_pivot_type, last_pivot_candle_pdi=0)
-
         try:
             h_o_starting_point: int = int(algo.zigzag_df.iloc[0].pdi)
         except:
             logger.warning(
-                f"\t{make_set_width(pair_name)}\tThe starting point entered isn't a lower order zigzag pivot... Consider changing the starting point. "
-                f"Skipping the pair...")
+                f"\t{make_set_width(pair_name)}\tThe starting point entered isn't a lower order zigzag pivot... Consider changing the starting point."
+                f" Skipping the pair...")
             continue
-
         algo.calc_h_o_zigzag(starting_point_pdi=h_o_starting_point)
 
+        # Determining where in the pattern we are _________________________________________________
         try:
             # The last segment found by the code
             latest_segment: Segment = algo.segments[-1]
@@ -73,37 +64,12 @@ while True:
             logger.debug(f"\t{make_set_width(pair_name)}\tNo segments found, skipping the pair...")
             continue
 
-        # If the latest segment's start time is newer than the start time of the segment registered when the positions were found (Or if we are
-        # starting fresh with no latest_segment registered), that means the old segment has been invalidated by a new segment forming.
-        # In this case, the existing positions (if any) should be canceled and new ones should be posted or awaited.
-        is_starting_fresh: bool = positions_info_dict[pair_name]["latest_segment_start_time"] is None
-        is_new_segment_found: bool = is_starting_fresh or algo.convert_pdis_to_times(latest_segment.start_pdi) > positions_info_dict[pair_name][
-            "latest_segment_start_time"]
-
-        # If we are not in a new segment, and we aren't starting with no positions, we can skip the rest of the code for this pair.
-        if not is_new_segment_found and not is_starting_fresh:
-            logger.debug(f"\t{make_set_width(pair_name)}\tNo new segment found, no updates made.")
+        start_type = algo.determine_main_loop_start_type(pair_name, positions_info_dict)
+        # If we are still in the same segment, don't do anything. Go to the next pair.
+        if start_type == "NO_NEW_SEGMENT":
             continue
 
-        # If there is a new segment, the rest of the code will execute, but also the positions found in the previous segment will be canceled.
-        else:
-            if is_starting_fresh:
-                logger.info(f"\t{make_set_width(pair_name)}\tNo Prior latest segment history, starting fresh...")
-
-            elif is_new_segment_found:
-                logger.info(f"\t{make_set_width(pair_name)}\tNew segment found, canceling prior positions...")
-
-            for position in positions_info_dict[pair_name]["positions"]:
-                position.cancel_position()
-
-            # Empty the list of positions, so we can wait for a new one.
-            positions_info_dict[pair_name]["positions"] = []
-
-            # Regardless o whether any positions are found or not in the future lines, we need to register the latest segment.
-            positions_info_dict[pair_name]["latest_segment_start_time"] = algo.convert_pdis_to_times(latest_segment.start_pdi)
-
-            logger.debug(f"\t{make_set_width(pair_name)}\tLatest segment start time registered: {positions_info_dict[pair_name]['latest_segment_start_time']}")
-
+        # Position formation ______________________________________________________________________
         # If the latest segment is finished (Which it should have, since segments only register once the end condition is met), find the leg which the
         # positions should form on.
         latest_segment_end_time: pd.Timestamp = pair_df.iloc[latest_segment.end_pdi].time
@@ -121,6 +87,7 @@ while True:
 
             base_pivot_type = "valley" if latest_segment.type == "ascending" else "peak"
 
+            # Finding eligible pivots for position formation ______________________________________
             # Positions should only be posted once the activation threshold has passed. This condition would normally implicitly pass, but for the
             # sake of clarity, it is explicitly stated.
             if latest_candle.time > algo.pair_df.iloc[position_activation_threshold].time:
@@ -128,16 +95,11 @@ while True:
                 eligible_lo_pivots = algo.zigzag_df[(algo.zigzag_df.pivot_type == base_pivot_type) &
                                                     (position_search_start_pdi <= algo.zigzag_df.pdi) &
                                                     (algo.zigzag_df.pdi < position_search_end_pdi)]
+
+                # Finding a good base candle ______________________________________________________
                 for pivot in eligible_lo_pivots.itertuples():
-                    # Form a window of candles to check for replacement order blocks. This window is bound by the current pivot and the next pivot of
-                    # opposite type, hence the pivot and the pivot found by shifting it by 1. This is a naive implementation, and under normal
-                    # circumstances we don't need to check that far.
-                    try:
-                        next_pivot_pdi = algo.find_relative_pivot(pivot.pdi, 1)
-                        replacement_ob_threshold_pdi = next_pivot_pdi
-                    except IndexError:
-                        # If no next pivot exists for whatever reason, just set the threshold to the last valid index of the dataframe.
-                        replacement_ob_threshold_pdi = algo.pair_df.last_valid_index()
+                    # The PDI of the last candle that needs to be checked to find a replacement.
+                    replacement_ob_threshold_pdi = algo.define_replacement_ob_threshold(pivot)
 
                     # This variable is used to calculate the initial liquidity of the order block. It is the liquidity of the pivot candle on the
                     # "tip" of the LO zigzag. The value is used for setting the stoploss for the positions.
@@ -146,38 +108,13 @@ while True:
                     # Iterate through the candle in the LO zigzag leg, trying to find the first base candle that forms a valid order block.
                     for base_candle_pdi in range(pivot.pdi, replacement_ob_threshold_pdi):
                         base_candle = algo.pair_df.iloc[base_candle_pdi]
-                        ob = OrderBlock(base_candle=base_candle,
-                                        icl=initial_pivot_candle_liquidity,
-                                        ob_type="long" if base_pivot_type == "valley" else "short")
+                        ob = algo.form_potential_ob(base_candle, base_pivot_type, initial_pivot_candle_liquidity, position_activation_threshold)
 
-                        # Try to find a valid exit candle for the order block.
-                        ob.register_exit_candle(algo.pair_df, position_activation_threshold)
-
-                        # If a valid exit candle is found, form the reentry check window.
-                        if ob.price_exit_index is not None:
-                            # In validation mode, the algorithm won't avoid posting positions that have been entered by price movements after the
-                            # activation threshold, therefore the positions can be more thoroughly examined.
-                            if constants.validation_mode:
-                                reentry_check_window: pd.DataFrame = algo.pair_df.iloc[ob.price_exit_index + 1:position_activation_threshold]
-                            else:
-                                reentry_check_window: pd.DataFrame = algo.pair_df.iloc[ob.price_exit_index + 1:]
-
-                        # If no exit candle is found, that means that order block isn't valid, and the search for a valid OB must continue with
-                        # the next candle.
-                        else:
+                        # If no OB has been found (typically due to no exit candle being found), move on to the next candle in the replacement window.
+                        if ob is None:
                             continue
 
-                        # Order block condition checks
-                        ob.check_reentry_condition(reentry_check_window)
-
-                        if constants.validation_mode:
-                            conditions_check_window: pd.DataFrame = algo.pair_df[ob.start_index:position_activation_threshold]
-                        else:
-                            conditions_check_window: pd.DataFrame = algo.pair_df[ob.start_index:]
-                        ob.set_condition_check_window(conditions_check_window)
-                        ob.check_fvg_condition()
-                        ob.check_stop_break_condition()
-
+                        # Registering and posting a discovered OB _________________________________
                         # If a valid order block which passes all the checks and conditions is found, post it to the channel and add it to the list of
                         # positions found for this pair.
                         if ob.has_reentry_condition and ob.has_fvg_condition and ob.has_stop_break_condition:
@@ -194,6 +131,8 @@ while True:
                             positions_info_dict[pair_name]["positions"].append(ob.position)
                             logger.info(f"\t{make_set_width(pair_name)}\tPosition found, OBID {ob.id}")
 
+                            # If a position is found, we don't need to keep looking for valid OB's. We can break out of the loop and move on to the
+                            # next "tip" pivot in the search window.
                             break
 
     time.sleep(constants.main_loop_interval)

@@ -1,15 +1,17 @@
-import logging
 import pandas as pd
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Literal
 
 from algo_code.datatypes import Pivot, Candle
+from algo_code.general_utils import make_set_width
+from algo_code.order_block import OrderBlock
 from algo_code.segment import Segment
+import utils.constants as constants
+from utils.logger import logger
 
 
 class Algo:
     def __init__(self, pair_df: pd.DataFrame,
-                 symbol: str,
-                 timeframe: str = "15m"):
+                 symbol: str):
 
         self.pair_df: pd.DataFrame = pair_df
         self.symbol: str = symbol
@@ -644,3 +646,120 @@ class Algo:
 
             else:
                 return None
+
+    def determine_main_loop_start_type(self, pair_name: str, positions_info_dict) -> Literal["NO_NEW_SEGMENT", "RESET_POSITIONS"]:
+        """
+        Resets the algorithm from the beginning in two cases: 1) If the segment that the most recent positions are in ends 2) If no latest segment has
+        been defined. Case 1 happens whe a BOS or CHOCH break is completed, and therefore the positions are invalidated. Case 2 happens when the
+        algorithm is starting totally fresh and no latest segment has been registered.
+
+        Returns:
+            None: The method directly modifies the positions_info_dict object and operates on its children.
+        """
+
+        # If the latest segment's start time is newer than the start time of the segment registered when the positions were found (Or if we are
+        # starting fresh with no latest_segment registered), that means the old segment has been invalidated by a new segment forming.
+        # In this case, the existing positions (if any) should be canceled and new ones should be posted or awaited.
+        is_starting_fresh: bool = positions_info_dict[pair_name]["latest_segment_start_time"] is None
+        is_new_segment_found: bool = is_starting_fresh or self.convert_pdis_to_times(self.segments[-1].start_pdi) > positions_info_dict[pair_name][
+            "latest_segment_start_time"]
+
+        # If we are not in a new segment, and we aren't starting with no positions, we can skip the rest of the code for this pair.
+        if not is_new_segment_found and not is_starting_fresh:
+            logger.debug(f"\t{make_set_width(pair_name)}\tNo new segment found, no updates made.")
+            return "NO_NEW_SEGMENT"
+
+        # If there is a new segment, the rest of the code will execute, but also the positions found in the previous segment will be canceled.
+        else:
+            if is_starting_fresh:
+                logger.info(f"\t{make_set_width(pair_name)}\tNo Prior latest segment history, starting fresh...")
+
+            elif is_new_segment_found:
+                logger.info(f"\t{make_set_width(pair_name)}\tNew segment found, canceling prior positions...")
+
+            for position in positions_info_dict[pair_name]["positions"]:
+                position.cancel_position()
+
+            # Empty the list of positions, so we can wait for a new one.
+            positions_info_dict[pair_name]["positions"] = []
+
+            # Regardless o whether any positions are found or not in the future lines, we need to register the latest segment.
+            positions_info_dict[pair_name]["latest_segment_start_time"] = self.convert_pdis_to_times(self.segments[-1].start_pdi)
+
+            logger.debug(
+                f"\t{make_set_width(pair_name)}\tLatest segment start time registered: {positions_info_dict[pair_name]['latest_segment_start_time']}")
+
+            return "RESET_POSITIONS"
+
+    def define_replacement_ob_threshold(self, pivot: pd.Series) -> int:
+        """
+        Form a window of candles to check for replacement order blocks. This window is bound by the current pivot and the next pivot of
+        opposite type, hence the pivot and the pivot found by shifting it by 1. This is a naive implementation, and under normal
+        circumstances we don't need to check that far.
+
+        Args:
+            pivot (pd.Series): A lower order zigzag pivot, located at the start (Or the "tip") of a lower order leg.
+
+        Returns:
+            int: The PDI of the last candle that should be checked for a replacement OB base candle.
+        """
+
+        try:
+            replacement_ob_threshold_pdi = self.find_relative_pivot(pivot.pdi, 1)
+        except IndexError:
+            # If no next pivot exists for whatever reason, just set the threshold to the last valid index of the dataframe.
+            replacement_ob_threshold_pdi = self.pair_df.last_valid_index()
+
+        return replacement_ob_threshold_pdi
+
+    def form_potential_ob(self,
+                          base_candle: pd.Series,
+                          base_pivot_type: str,
+                          initial_pivot_candle_liquidity: float,
+                          position_activation_threshold: int) -> OrderBlock | None:
+        """
+            Forms a potential order block (OB) based on the given base candle and conditions.
+
+            Args:
+                base_candle (pd.Series): The base candle to form the order block.
+                base_pivot_type (str): The type of the base pivot, either "valley" or "peak".
+                initial_pivot_candle_liquidity (float): The liquidity of the pivot candle, used to determine the stoploss level.
+                position_activation_threshold (int): The PDI of the candle after which the positions are activated.
+
+            Returns:
+                OrderBlock | None: The formed order block after checking the conditions, otherwise None if no exit candle is found.
+            """
+
+        ob = OrderBlock(base_candle=base_candle,
+                        icl=initial_pivot_candle_liquidity,
+                        ob_type="long" if base_pivot_type == "valley" else "short")
+
+        # Try to find a valid exit candle for the order block.
+        ob.register_exit_candle(self.pair_df, position_activation_threshold)
+
+        # If a valid exit candle is found, form the reentry check window.
+        if ob.price_exit_index is not None:
+            # In validation mode, the algorithm won't avoid posting positions that have been entered by price movements after the
+            # activation threshold, therefore the positions can be more thoroughly examined.
+            if constants.validation_mode:
+                reentry_check_window: pd.DataFrame = self.pair_df.iloc[ob.price_exit_index + 1:position_activation_threshold]
+            else:
+                reentry_check_window: pd.DataFrame = self.pair_df.iloc[ob.price_exit_index + 1:]
+
+        # If no exit candle is found, that means that order block isn't valid. None is returned.
+        else:
+            return None
+
+        # Order block condition checks
+        ob.check_reentry_condition(reentry_check_window)
+
+        if constants.validation_mode:
+            conditions_check_window: pd.DataFrame = self.pair_df[ob.start_index:position_activation_threshold]
+        else:
+            conditions_check_window: pd.DataFrame = self.pair_df[ob.start_index:]
+
+        ob.set_condition_check_window(conditions_check_window)
+        ob.check_fvg_condition()
+        ob.check_stop_break_condition()
+
+        return ob
