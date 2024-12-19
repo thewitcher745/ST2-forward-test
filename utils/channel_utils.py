@@ -1,6 +1,8 @@
 import requests
+import time
 
 import utils.constants as constants
+from utils.logger import logger
 
 
 def post_message(message: str, reply_id: int = None):
@@ -20,10 +22,16 @@ def post_message(message: str, reply_id: int = None):
         "text": message,
         "reply_to_message_id": reply_id
     }
-    response = requests.post(
-        f'https://api.telegram.org/bot{constants.credentials["BOT_TOKEN"]}/sendMessage', json=payload).json()
 
-    return response["result"]["message_id"]
+    while True:
+        response = requests.post(
+            f'https://api.telegram.org/bot{constants.credentials["BOT_TOKEN"]}/sendMessage', json=payload).json()
+
+        if response.get("ok"):
+            return response["result"]["message_id"]
+        else:
+            logger.error(f"Failed to post message: {response['description']}. Retrying...")
+            time.sleep(1)
 
 
 def get_channel_name(channel_id: int):
