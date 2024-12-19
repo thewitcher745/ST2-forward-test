@@ -1,11 +1,10 @@
-- Add error handling nd logging for the following cases:
-    - When a broken LPL can't be found, aka when the leg to form positions on hasn't formed yet
-    + When a defined starting point doesn't have a zigzag pivot
-    + When no latest segment is found
-
 - Hard-saving posted signals to avoid them being double-posted to the channel
 - Writing a GUI to streamline bot launch
 - Improving the current logging features (Ongoing task)
 
++ Add error handling nd logging for the following cases:
+    + When a broken LPL can't be found, aka when the leg to form positions on hasn't formed yet
+    + When a defined starting point doesn't have a zigzag pivot
+    + When no latest segment is found
 + Modularizing the main file to make it more readable and cleaner
 + Position cancelling
