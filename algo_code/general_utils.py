@@ -56,7 +56,7 @@ def get_pairs_data_parallel(symbols: list, start_times: dict) -> dict:
                 all_data.extend(data)
                 current_start_time_ms = data[-1][0] + 1  # Move to the next timestamp after the last one fetched
             except Exception as e:
-                return None
+                return symbol, None
 
         # Convert UNIX timestamp to UTC time format and create DataFrame
         data = [[datetime.datetime.utcfromtimestamp(row[0] / 1000)] + row[1:5] for row in all_data]
@@ -180,9 +180,11 @@ def get_pair_list(pair_list_filename: str = "pair_list.csv") -> list:
     return pd.read_csv(pair_list_filename)["pairs"].tolist()
 
 
-def get_pairs_start_data(pair_list: list[str]) -> dict:
+def get_pairs_start_data(pair_list: list[str]) -> tuple[dict, dict]:
     # Get the start data for a list of pairs. Returns a dict containing the start time and starting pivot type for each pair.
-    return {pair: get_pair_start_data(pair) for pair in pair_list}
+    dict_form_start_data = {pair: get_pair_start_data(pair) for pair in pair_list}
+    return ({pair_name: dict_form_start_data[pair_name]["start_time"] for pair_name in dict_form_start_data.keys()},
+            {pair_name: dict_form_start_data[pair_name]["starting_pivot_type"] for pair_name in dict_form_start_data.keys()})
 
 
 def get_pair_start_data(pair_name: str) -> dict:
