@@ -1,11 +1,19 @@
 from dotenv import dotenv_values
 
 credentials = dotenv_values("./.env.secret")
+
+
 params = dotenv_values("./.env.params")
 start_times = dotenv_values("./.env.starttimes")
 
 mode = credentials["MODE"]
+credentials["CHANNEL_ID"] = credentials["CHANNEL_ID"] if credentials["MODE"] == "PROD" else credentials["DEV_CHANNEL_ID"]
+
 validation_mode = True if params["validation_mode"].lower() == "true" else False
+
+if mode == "DEV":
+    validation_mode = True
+
 market_type = params["market_type"]
 main_loop_interval = int(params["main_loop_interval"])
 price_rounding_precision = int(params["price_rounding_precision"])
