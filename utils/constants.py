@@ -1,17 +1,24 @@
 from dotenv import dotenv_values
+import argparse
+
+# Parse runtime arguments
+parser = argparse.ArgumentParser(description="Program configuration")
+parser.add_argument("--mode", choices=["DEV", "PROD"], help="Override the mode from .env.params")
+args = parser.parse_args()
 
 credentials = dotenv_values("./.env.secret")
-
 
 params = dotenv_values("./.env.params")
 start_times = dotenv_values("./.env.starttimes")
 
-mode = credentials["MODE"]
+# Override mode if provided as a runtime argument
+mode = args.mode if args.mode else credentials["MODE"]
+
 credentials["CHANNEL_ID"] = credentials["CHANNEL_ID"] if credentials["MODE"] == "PROD" else credentials["DEV_CHANNEL_ID"]
 
 validation_mode = True if params["validation_mode"].lower() == "true" else False
 
-if mode == "DEV":
+if mode.lower() == "dev":
     validation_mode = True
 
 market_type = params["market_type"]
