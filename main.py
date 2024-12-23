@@ -15,12 +15,15 @@ pair_list: list[str] = initiate_pair_list()
 # "latest_segment_start_time" is also saved, which is the time of the latest segment found by the code at the time of that position being added.
 # Initially, the position list is empty and the latest segment start time is set to None. In the event of a position being found, this dict is
 # populated with appropriate data.
-positions_info_dict: dict[str, dict[str, list[Position] | pd.Timestamp | None]] = {}
+# Added is the "has_been_searched" key, which is used to determine if an appropriate HO zigzag leg has been searched for positions. If True, the
+# algorithm waits until the next segment is found before searching for positions again.
+positions_info_dict: dict[str, dict[str, list[Position] | pd.Timestamp | None | bool]] = {}
 
 for pair_name in pair_list:
     positions_info_dict[pair_name] = {}
     positions_info_dict[pair_name]["positions"] = []
     positions_info_dict[pair_name]["latest_segment_start_time"] = None
+    positions_info_dict[pair_name]["has_been_searched"] = None
 
 #  Initializing the starting data
 pairs_start_times, pairs_starting_pivot_types = get_pairs_start_data(pair_list)
@@ -67,7 +70,21 @@ while True:
         start_type = algo.determine_main_loop_start_type(pair_name, positions_info_dict)
         # If we are still in the same segment, don't do anything. Go to the next pair.
         if start_type == "NO_NEW_SEGMENT":
-            continue
+            # If we have already searched for positions in the current segment, we don't need to search again. We can move on to the next pair.
+            if positions_info_dict[pair_name]["has_been_searched"]:
+                logger.debug(f"\t{make_set_width(pair_name)}\tThe positions for the most recent appropriate HO leg have been processed, waiting...")
+                continue
+
+            # Otherwise, if the latest segment has a BOS formation type, and after it has ended the new HO zigzag point has not yet formed, that means
+            # the segment has ended by a candle closing above/below the BOS, but no appropriate HO zigzag leg exists to search for positions.
+            elif latest_segment.formation_method == "bos" and latest_candle.time >= algo.convert_pdis_to_times(latest_segment.end_pdi) and len(
+                    [h_o_pivot_pdi for h_o_pivot_pdi in algo.h_o_indices if h_o_pivot_pdi > latest_segment.end_pdi]) == 0:
+                logger.debug(f"\t{make_set_width(pair_name)}\tNo new HO zigzag leg found after the last segment, waiting...")
+                continue
+
+            logger.debug(f"\t{make_set_width(pair_name)}\tPosition searching is required...")
+
+            # If none of the "waiting" conditions are true, that means the positions should be getting searched for and posted, if any are found valid
 
         # Position formation ______________________________________________________________________
         # If the latest segment is finished (Which it should have, since segments only register once the end condition is met), find the leg which the
@@ -80,10 +97,15 @@ while True:
             # If no broken LPL is found, the method returns None; So we would move on to the next pair.
             if position_search_window is None:
                 continue
+            else:
+                position_search_start_pdi = position_search_window["start"]
+                position_search_end_pdi = position_search_window["end"]
+                position_activation_threshold = position_search_window["activation_threshold"]
 
-            position_search_start_pdi = position_search_window["start"]
-            position_search_end_pdi = position_search_window["end"]
-            position_activation_threshold = position_search_window["activation_threshold"]
+                positions_info_dict[pair_name]["has_been_searched"] = True
+                logger.debug(
+                    f"\t{make_set_width(pair_name)}\tSearching for positions in the window "
+                    f"{algo.convert_pdis_to_times([position_search_start_pdi, position_search_end_pdi])}...")
 
             base_pivot_type = "valley" if latest_segment.type == "ascending" else "peak"
 
@@ -122,7 +144,10 @@ while True:
                             validation_data = {
                                 "activation_time": algo.pair_df.iloc[position_activation_threshold].time,
                                 "broken_lpl": algo.pair_df.iloc[position_search_end_pdi].time,
-                                "position_search_window": algo.convert_pdis_to_times([position_search_start_pdi, position_search_end_pdi])
+                                "position_search_window": algo.convert_pdis_to_times([position_search_start_pdi, position_search_end_pdi]),
+                                "latest_segment_bounds": algo.convert_pdis_to_times([latest_segment.start_pdi, latest_segment.end_pdi]),
+                                "latest_segment_ho_pivots": algo.convert_pdis_to_times(
+                                    [index for index in algo.h_o_indices if latest_segment.start_pdi <= index])
                             }
                             ob.position.message_id = ob.position.post_to_channel(pair_name, validation_data)
 

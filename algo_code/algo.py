@@ -252,7 +252,10 @@ class Algo:
             dict: A dictionary containing the breaking sentiment and the index of the candle that caused the break. The breaking sentiment
                   can be one of the following: "PBOS_SHADOW", "PBOS_CLOSE", "CHOCH_SHADOW", "CHOCH_CLOSE", "NONE".
         """
-        search_window: pd.DataFrame = self.pair_df.iloc[latest_pbos_pdi + 1:]
+
+        # We only go up to the second last candle in the pair_df, aka the last non-realtime candle, because otherwise, the close value of the candle
+        # might change and incorrectly register a break.
+        search_window: pd.DataFrame = self.pair_df.iloc[latest_pbos_pdi + 1:-1]
 
         # The definition of "breaking" is different whether the PBOS is a peak or a valley
         if trend_type == "ascending":
@@ -691,6 +694,7 @@ class Algo:
 
             return "RESET_POSITIONS"
 
+
     def define_replacement_ob_threshold(self, pivot: pd.Series) -> int:
         """
         Form a window of candles to check for replacement order blocks. This window is bound by the current pivot and the next pivot of
@@ -711,6 +715,7 @@ class Algo:
             replacement_ob_threshold_pdi = self.pair_df.last_valid_index()
 
         return replacement_ob_threshold_pdi
+
 
     def form_potential_ob(self,
                           base_candle: pd.Series,
