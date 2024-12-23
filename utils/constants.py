@@ -8,6 +8,7 @@ mode = credentials["MODE"]
 validation_mode = True if params["validation_mode"].lower() == "true" else False
 market_type = params["market_type"]
 main_loop_interval = int(params["main_loop_interval"])
+price_rounding_precision = int(params["price_rounding_precision"])
 
 # The lower order timeframe
 timeframe = params['timeframe']
