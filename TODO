@@ -1,4 +1,6 @@
 - Hard-saving posted signals to avoid them being double-posted to the channel
+- Not canceling alreay entered positions
+- Adjustable leverage and leverage type, as well as customizable exchange list
 - Writing a GUI to streamline bot launch
 - Improving the current logging features (Ongoing task)
 

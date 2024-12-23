@@ -3,7 +3,7 @@ import argparse
 
 # Parse runtime arguments
 parser = argparse.ArgumentParser(description="Program configuration")
-parser.add_argument("--mode", choices=["DEV", "PROD"], help="Override the mode from .env.params")
+parser.add_argument("--mode", choices=["dev", "prod"], help="Override the mode from .env.params")
 args = parser.parse_args()
 
 credentials = dotenv_values("./.env.secret")
