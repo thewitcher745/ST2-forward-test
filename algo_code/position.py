@@ -46,15 +46,15 @@ Leverage: Isolated (20.0X)
 Entry Targets:
 """
 
-        message += f"1) {float(self.entry_price)}\n"
+        message += f"1) {float(round(self.entry_price, constants.price_rounding_precision))}\n"
 
         message += "\nTake-Profit Targets: \n"
 
         for target_id, target in enumerate(self.target_list):
-            message += f"{target_id + 1}) {target} \n"
+            message += f"{target_id + 1}) {round(target, constants.price_rounding_precision)} \n"
 
         message += "\nStop Targets: \n"
-        message += f"1) {self.stoploss}\n"
+        message += f"1) {round(self.stoploss, constants.price_rounding_precision)}\n"
 
         if constants.validation_mode:
             message += f"\nBase candle:\n{self.parent_ob.base_candle}\n"
