@@ -5,6 +5,7 @@ import argparse
 parser = argparse.ArgumentParser(description="Program configuration")
 parser.add_argument("--mode", choices=["dev", "prod"], help="Override the mode from .env.params")
 parser.add_argument("--pl", help="Override the mode from pair list filename (Default \"pair_list.csv\")")
+parser.add_argument("--cid", help="Override the ID of the canel to post.")
 args = parser.parse_args()
 
 credentials = dotenv_values("./.env.secret")
@@ -54,7 +55,7 @@ leverage_type = params["leverage_type"].capitalize()
 pair_list_filename = args.pl if args.pl else "pair_list.csv"
 
 # Override the channel ID configuration
-channel_id = args.channel_id if args.channel_id else credentials["CHANNEL_ID"]
+channel_id = args.cid if args.cid else credentials["CHANNEL_ID"]
 
 start_times_filename = f"{timeframe}.env.starttimes"
 
