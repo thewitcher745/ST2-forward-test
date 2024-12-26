@@ -45,7 +45,7 @@ def confirm_start(channel_name):
 
 
 def initiate_pair_list() -> list:
-    pair_list = get_pair_list()
+    pair_list = get_pair_list(constants.pair_list_filename)
     logger.info("Pair list to run is:")
     for pair in pair_list:
         logger.info(f"| {pair}")

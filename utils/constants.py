@@ -47,3 +47,8 @@ mock_api_url = credentials["MOCK_API_URL"]
 num_pairs_engaged = params["num_pairs_engaged"]
 
 stoploss_coeff: float = float(params["stoploss_coeff"])
+
+leverage = int(params["leverage"])
+leverage_type = params["leverage_type"].capitalize()
+
+pair_list_filename = args.pair_list if args.pair_list else "pair_list.csv"

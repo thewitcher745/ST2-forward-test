@@ -1,6 +1,3 @@
-from typing import Union
-import pandas as pd
-
 from utils.channel_utils import post_message
 import algo_code.position_prices_setup as setup
 import utils.constants as constants
@@ -41,7 +38,7 @@ class Position:
         message = f"""⚡️⚡️ #{symbol_for_signal} ⚡️⚡️
 Exchanges: Binance Futures
 Signal Type: Regular ({self.type})
-Leverage: Isolated (20.0X)
+Leverage: {constants.leverage_type} ({constants.leverage}.0X)
 
 Entry Targets:
 """
