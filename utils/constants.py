@@ -9,7 +9,6 @@ args = parser.parse_args()
 credentials = dotenv_values("./.env.secret")
 
 params = dotenv_values("./.env.params")
-start_times = dotenv_values("./.env.starttimes")
 
 # Override mode if provided as a runtime argument
 mode = args.mode if args.mode else credentials["MODE"]
@@ -55,3 +54,7 @@ pair_list_filename = args.pair_list if args.pair_list else "pair_list.csv"
 
 # Override the channel ID configuration
 channel_id = args.channel_id if args.channel_id else credentials["CHANNEL_ID"]
+
+start_times_filename = f"{timeframe}.env.starttimes"
+
+start_times = dotenv_values(f"./{start_times_filename}")

@@ -85,3 +85,9 @@ python main.py
 - Extended validation mode. In its current state, enabling validation mode will cause the algorithm to also post positions that have been entered by
   the candles located after the activation threshold. This enables the user to see what positions were potentially missed by running the algorithm
   late, and what positions would have been entered and possibly profitted off of if the algorithm was running in real time.
+
+#### ver b0.2.3
+
+- Extended usabillity wit hruntime arguments for pair list and channel ID, as well as separate starting time lists based on timeframe.
+- Added a utility to cancel all pairs given in the `pair_list.csv` file or any other file given through the runtime argument `--pair_list`.
+- Added customizable leverage and leverage types through `.env.params`
