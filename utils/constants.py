@@ -52,3 +52,6 @@ leverage = int(params["leverage"])
 leverage_type = params["leverage_type"].capitalize()
 
 pair_list_filename = args.pair_list if args.pair_list else "pair_list.csv"
+
+# Override the channel ID configuration
+channel_id = args.channel_id if args.channel_id else credentials["CHANNEL_ID"]
