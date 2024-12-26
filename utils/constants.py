@@ -4,6 +4,7 @@ import argparse
 # Parse runtime arguments
 parser = argparse.ArgumentParser(description="Program configuration")
 parser.add_argument("--mode", choices=["dev", "prod"], help="Override the mode from .env.params")
+parser.add_argument("--pl", choices=["dev", "prod"], help="Override the mode from .env.params")
 args = parser.parse_args()
 
 credentials = dotenv_values("./.env.secret")
@@ -50,7 +51,7 @@ stoploss_coeff: float = float(params["stoploss_coeff"])
 leverage = int(params["leverage"])
 leverage_type = params["leverage_type"].capitalize()
 
-pair_list_filename = args.pair_list if args.pair_list else "pair_list.csv"
+pair_list_filename = args.pl if args.pl else "pair_list.csv"
 
 # Override the channel ID configuration
 channel_id = args.channel_id if args.channel_id else credentials["CHANNEL_ID"]
