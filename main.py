@@ -72,14 +72,14 @@ while True:
         if start_type == "NO_NEW_SEGMENT":
             # If we have already searched for positions in the current segment, we don't need to search again. We can move on to the next pair.
             if positions_info_dict[pair_name]["has_been_searched"]:
-                logger.debug(f"\t{make_set_width(pair_name)}\tThe positions for the most recent appropriate HO leg have been processed, waiting...")
+                # logger.debug(f"\t{make_set_width(pair_name)}\tThe positions for the most recent appropriate HO leg have been processed, waiting...")
                 continue
 
             # Otherwise, if the latest segment has a BOS formation type, and after it has ended the new HO zigzag point has not yet formed, that means
             # the segment has ended by a candle closing above/below the BOS, but no appropriate HO zigzag leg exists to search for positions.
             elif latest_segment.formation_method == "bos" and latest_candle.time >= algo.convert_pdis_to_times(latest_segment.end_pdi) and len(
                     [h_o_pivot_pdi for h_o_pivot_pdi in algo.h_o_indices if h_o_pivot_pdi > latest_segment.end_pdi]) == 0:
-                logger.debug(f"\t{make_set_width(pair_name)}\tNo new HO zigzag leg found after the last segment, waiting...")
+                # logger.debug(f"\t{make_set_width(pair_name)}\tNo new HO zigzag leg found after the last segment, waiting...")
                 continue
 
             logger.debug(f"\t{make_set_width(pair_name)}\tPosition searching is required...")
