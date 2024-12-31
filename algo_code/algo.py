@@ -681,7 +681,15 @@ class Algo:
                 logger.info(f"\t{make_set_width(pair_name)}\tNew segment found, canceling prior positions...")
 
             for position in positions_info_dict[pair_name]["positions"]:
-                position.cancel_position()
+                attempts = 0
+                while attempts < 3:
+                    try:
+                        position.cancel_position()
+                        break
+                    except Exception as e:
+                        attempts += 1
+                        if attempts == 3:
+                            logger.error(f"\t{make_set_width(pair_name)}\tFailed to cancel position {position} after 3 attempts: {e}")
 
             # Empty the list of positions, so we can wait for a new one.
             positions_info_dict[pair_name]["positions"] = []
