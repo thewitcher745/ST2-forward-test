@@ -15,7 +15,7 @@ params = dotenv_values("./.env.params")
 # Override mode if provided as a runtime argument
 mode = args.mode if args.mode else credentials["MODE"]
 
-credentials["CHANNEL_ID"] = credentials["CHANNEL_ID"] if credentials["MODE"] == "PROD" else credentials["DEV_CHANNEL_ID"]
+credentials["CHANNEL_ID"] = credentials["CHANNEL_ID"] if mode.lower() == "prod" else credentials["DEV_CHANNEL_ID"]
 
 validation_mode = True if params["validation_mode"].lower() == "true" else False
 

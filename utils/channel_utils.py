@@ -18,7 +18,7 @@ def post_message(message: str, reply_id: int = None):
     """
 
     payload = {
-        "chat_id": constants.credentials["CHANNEL_ID"],
+        "chat_id": constants.channel_id,
         "text": message,
         "reply_to_message_id": reply_id
     }
