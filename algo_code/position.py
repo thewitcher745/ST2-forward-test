@@ -68,4 +68,5 @@ Entry Targets:
         return post_message(message)
 
     def cancel_position(self):
-        post_message("Cancel", self.message_id)
+        # The +1 is because Cornix reposts the signal after it's posted by the bot, increasing the ID by 1.
+        post_message("Cancel", self.message_id + 1)
