@@ -6,6 +6,7 @@ parser = argparse.ArgumentParser(description="Program configuration")
 parser.add_argument("--mode", choices=["dev", "prod"], help="Override the mode from .env.params")
 parser.add_argument("--pl", help="Override the mode from pair list filename (Default \"pair_list.csv\")")
 parser.add_argument("--cid", help="Override the ID of the canel to post.")
+parser.add_argument("--timeframe", help="Override the timeframe from .env.params")
 args = parser.parse_args()
 
 credentials = dotenv_values("./.env.secret")
@@ -28,6 +29,8 @@ price_rounding_precision = int(params["price_rounding_precision"])
 
 # The lower order timeframe
 timeframe = params['timeframe']
+
+timeframe = args.timeframe if args.timeframe else timeframe
 
 # The skip "interval" between the low and high timeframe, 2 means that the low timeframe is 2 times smaller than the high timeframe,
 # as in 15m becomes 4h, 1h becomes 1d, etc.
