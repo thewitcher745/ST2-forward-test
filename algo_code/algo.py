@@ -669,7 +669,7 @@ class Algo:
 
         # If we are not in a new segment, and we aren't starting with no positions, we can skip the rest of the code for this pair.
         if not is_new_segment_found and not is_starting_fresh:
-            logger.debug(f"\t{make_set_width(pair_name)}\tNo new segment found, no updates made.")
+            # logger.debug(f"\t{make_set_width(pair_name)}\tNo new segment found, no updates made.")
             return "NO_NEW_SEGMENT"
 
         # If there is a new segment, the rest of the code will execute, but also the positions found in the previous segment will be canceled.
