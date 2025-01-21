@@ -19,9 +19,11 @@ mode = args.mode if args.mode else credentials["MODE"]
 credentials["CHANNEL_ID"] = credentials["CHANNEL_ID"] if mode.lower() == "prod" else credentials["DEV_CHANNEL_ID"]
 
 validation_mode = True if params["validation_mode"].lower() == "true" else False
+channel_message_sleep_timeout = params['channel_message_sleep_timeout']
 
 if mode.lower() == "dev":
     validation_mode = True
+    channel_message_sleep_timeout = 1
 
 market_type = params["market_type"]
 main_loop_interval = int(params["main_loop_interval"])

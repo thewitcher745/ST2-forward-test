@@ -28,7 +28,7 @@ def post_message(message: str, reply_id: int = None):
             f'https://api.telegram.org/bot{constants.credentials["BOT_TOKEN"]}/sendMessage', json=payload).json()
 
         if response.get("ok"):
-            time.sleep(3)
+            time.sleep(constants.channel_message_sleep_timeout)
             return response["result"]["message_id"]
 
         else:
