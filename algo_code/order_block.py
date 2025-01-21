@@ -35,22 +35,12 @@ class OrderBlock:
         self.position = Position(self)
 
         # Checks and flags
-        self.is_valid = True
         self.price_exit_index = None
-        self.price_reentry_indices = []
         self.condition_check_window = None
         self.has_reentry_condition = True
         self.has_fvg_condition = None
         self.has_stop_break_condition = None
         self.has_been_replaced = False
-        self.fvg_fail_message = ""
-
-        # The number of times the algorithm has tried to find a replacement for this order block
-        self.times_moved = 0
-
-        # The ranking of the order block within its segment. Sequential number, meaning the first VALID OB in a segment gets assigned number 1, next
-        # one gets assigned 2, and so on
-        self.ranking_within_segment = 0
 
     def __repr__(self):
         return f"OB {self.id} ({self.type})"
