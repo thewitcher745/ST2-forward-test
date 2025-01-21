@@ -5,6 +5,7 @@ from algo_code.datatypes import Pivot, Candle
 from algo_code.general_utils import make_set_width
 from algo_code.order_block import OrderBlock
 from algo_code.segment import Segment
+from algo_code.position import Position
 import utils.constants as constants
 from utils.logger import logger
 
@@ -702,7 +703,6 @@ class Algo:
 
             return "RESET_POSITIONS"
 
-
     def define_replacement_ob_threshold(self, pivot: pd.Series) -> int:
         """
         Form a window of candles to check for replacement order blocks. This window is bound by the current pivot and the next pivot of
@@ -723,7 +723,6 @@ class Algo:
             replacement_ob_threshold_pdi = self.pair_df.last_valid_index()
 
         return replacement_ob_threshold_pdi
-
 
     def form_potential_ob(self,
                           base_candle: pd.Series,
@@ -776,3 +775,20 @@ class Algo:
         ob.check_stop_break_condition()
 
         return ob
+
+    @staticmethod
+    def register_possible_position_entries(position: Position, latest_candle):
+        """
+        Sets the .has_been_entered property of all positions which have been entered by the latest candle.
+
+        Args:
+            position (Position): The position to check.
+            latest_candle (pd.Series): The latest candle.
+        """
+
+        if position.type == 'long':
+            if latest_candle.low <= position.entry_price:
+                position.register_entered()
+
+        elif latest_candle.high >= position.entry_price:
+            position.register_entered()

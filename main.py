@@ -21,7 +21,7 @@ positions_info_dict: dict[str, dict[str, list[Position] | pd.Timestamp | None | 
 
 for pair_name in pair_list:
     positions_info_dict[pair_name] = {}
-    positions_info_dict[pair_name]["positions"] = []
+    positions_info_dict[pair_name]["positions"]: list[Position] = []
     positions_info_dict[pair_name]["latest_segment_start_time"] = None
     positions_info_dict[pair_name]["has_been_searched"] = None
 
@@ -46,6 +46,9 @@ while True:
             continue
 
         latest_candle = pair_df.iloc[-1]
+
+        for position in positions_info_dict[pair_name]['positions']:
+            Algo.register_possible_position_entries(position, latest_candle)
 
         # HO zigzag calculations __________________________________________________________________
         algo = Algo(pair_df=pair_df, symbol=pair_name)

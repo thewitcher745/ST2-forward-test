@@ -15,19 +15,14 @@ class Position:
         self.type = parent_ob.type
 
         self.status: str = "ACTIVE"
-        self.entry_pdi = None
-        self.qty: float = 0
-        self.highest_target: int = 0
-        self.target_hit_pdis: list[int] = []
-        self.exit_pdi = None
-        self.portioned_qty = []
-        self.net_profit = None
 
         self.target_list = []
         self.stoploss = None
 
         # Set up the target list nd stoploss using a function which operates on the "self" object and directly manipulates the instance.
         setup.default_357(self)
+
+        self.has_been_entered = False
 
         # This variable will be assigned a value once the position is posted to the channel. The value will be used to cancel it once the segment
         # containing the position expires.
@@ -63,10 +58,35 @@ Entry Targets:
 
         return message
 
-    def post_to_channel(self, symbol, validation_data: dict):
+    def register_entered(self) -> None:
+        # Registers the position as "entered" so it won't get canceled.
+        self.has_been_entered = True
+
+    def post_to_channel(self, symbol, validation_data: dict) -> int:
+        """
+        Post the position to the channel and return the message ID.
+        Args:
+            symbol: The symbol of the signal
+            validation_data: The validation data to be posted alongside the signal, for debugging
+
+        Returns:
+            int: The message ID of the posted message.
+        """
         message = self.compose_signal_message(symbol, validation_data)
         return post_message(message)
 
-    def cancel_position(self):
-        # The +1 is because Cornix reposts the signal after it's posted by the bot, increasing the ID by 1.
-        post_message("Cancel", self.message_id + 1)
+    def cancel_position(self) -> None:
+        # Cancel the position if it has not been entered.
+
+        if not self.has_been_entered:
+            if constants.mode.lower() == 'dev':
+                # If running in dev mode, don't increase the message_id by 1
+                post_message("Cancel", self.message_id)
+
+                return
+
+            # The +1 is because Cornix reposts the signal after it's posted by the bot, increasing the ID by 1.
+            else:
+                post_message("Cancel", self.message_id + 1)
+
+                return
