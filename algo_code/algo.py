@@ -695,6 +695,8 @@ class Algo:
             # Empty the list of positions, so we can wait for a new one.
             positions_info_dict[pair_name]["positions"] = []
 
+            positions_info_dict[pair_name]["has_been_searched"] = False
+
             # Regardless o whether any positions are found or not in the future lines, we need to register the latest segment.
             positions_info_dict[pair_name]["latest_segment_start_time"] = self.convert_pdis_to_times(self.segments[-1].start_pdi)
 
