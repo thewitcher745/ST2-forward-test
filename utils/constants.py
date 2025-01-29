@@ -23,7 +23,7 @@ channel_message_sleep_timeout = int(params['channel_message_sleep_timeout'])
 
 if mode.lower() == "dev":
     validation_mode = True
-    channel_message_sleep_timeout = 1
+    channel_message_sleep_timeout = 3
 
 market_type = params["market_type"]
 main_loop_interval = int(params["main_loop_interval"])
