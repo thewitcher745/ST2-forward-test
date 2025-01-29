@@ -60,7 +60,7 @@ def initialize():
     Initializes the program by setting the console logging level and confirming the start (if the mode is not DEV).
     """
 
-    set_console_logging_level()
+    # set_console_logging_level()
 
     channel_name = get_channel_name(constants.credentials["CHANNEL_ID"])
 

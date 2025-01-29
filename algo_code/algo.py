@@ -361,7 +361,6 @@ class Algo:
         self.h_o_indices.append(self.starting_pdi)
 
         # The first CHOCH is always the starting point, until it is updated when a BOS or a CHOCH is broken.
-        latest_choch_pdi = self.starting_pdi
         latest_choch_threshold: float = self.zigzag_df[self.zigzag_df.pdi == self.starting_pdi].iloc[0].pivot_value
 
         # The starting point of each pattern. This resets and changes whenever the pattern needs to be restarted. Unlike self.starting_pdi this DOES
@@ -425,8 +424,6 @@ class Algo:
 
             # If a candle breaks the CHOCH with its shadow (And ONLY its shadow, not its close value), update the latest CHOCH pdi and threshold
             elif breaking_sentiment == "CHOCH_SHADOW":
-
-                latest_choch_pdi = breaking_pdi
                 latest_choch_threshold = self.pair_df.iloc[breaking_pdi].low if trend_type == "ascending" else \
                     self.pair_df.iloc[breaking_pdi].high
 
@@ -454,7 +451,6 @@ class Algo:
 
                 # Add the extremum point to the HO indices
                 self.h_o_indices.append(int(extremum_pivot.pdi))
-                extremum_type = "lowest low" if trend_type == "ascending" else "highest high"
 
                 # Now, we can restart finding HO pivots. Starting point is set to the last LPL of the same type BEFORE the BOS breaking candle.
                 # Trend stays the same since no CHOCH has occurred.
@@ -670,32 +666,41 @@ class Algo:
 
         # If we are not in a new segment, and we aren't starting with no positions, we can skip the rest of the code for this pair.
         if not is_new_segment_found and not is_starting_fresh:
-            # logger.debug(f"\t{make_set_width(pair_name)}\tNo new segment found, no updates made.")
             return "NO_NEW_SEGMENT"
 
         # If there is a new segment, the rest of the code will execute, but also the positions found in the previous segment will be canceled.
         else:
             if is_starting_fresh:
-                logger.info(f"\t{make_set_width(pair_name)}\tNo Prior latest segment history, starting fresh...")
+                logger.info(f"\t{make_set_width(pair_name)}\tNo prior latest segment history, starting fresh...")
 
             elif is_new_segment_found:
                 logger.info(f"\t{make_set_width(pair_name)}\tNew segment found, canceling prior positions...")
 
-            for position in positions_info_dict[pair_name]["positions"]:
-                attempts = 0
-                while attempts < 3:
-                    try:
-                        position.cancel_position()
-                        break
-                    except Exception as e:
-                        attempts += 1
-                        if attempts == 3:
-                            logger.error(f"\t{make_set_width(pair_name)}\tFailed to cancel position {position} after 3 attempts: {e}")
+                for position in positions_info_dict[pair_name]["positions"]:
+                    attempts = 0
+                    while attempts < 3:
+                        try:
+                            position.cancel_position()
+
+                            logger.warning(f"\t{make_set_width(pair_name)}\tCanceled position {position.parent_ob.id}...")
+                            break
+
+                        except RuntimeError:
+                            logger.warning(
+                                f"\t{make_set_width(pair_name)}\tPosition {position.parent_ob.id} wasn't canceled as it had been entered before.")
+                            break
+
+                        except Exception as e:
+                            attempts += 1
+                            if attempts == 3:
+                                logger.error(
+                                    f"\t{make_set_width(pair_name)}\tFailed to cancel position {position.parent_ob.id} after 3 attempts: {e}")
 
             # Empty the list of positions, so we can wait for a new one.
             positions_info_dict[pair_name]["positions"] = []
 
             positions_info_dict[pair_name]["has_been_searched"] = False
+            positions_info_dict[pair_name]["last_log_message"] = "CANCELED_POSITIONS"
 
             # Regardless o whether any positions are found or not in the future lines, we need to register the latest segment.
             positions_info_dict[pair_name]["latest_segment_start_time"] = self.convert_pdis_to_times(self.segments[-1].start_pdi)

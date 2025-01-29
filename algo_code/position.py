@@ -1,7 +1,8 @@
+from algo_code.general_utils import make_set_width
 from utils.channel_utils import post_message
 import algo_code.position_prices_setup as setup
 import utils.constants as constants
-
+from utils.logger import logger
 
 class Position:
     def __init__(self, parent_ob):
@@ -88,5 +89,7 @@ Entry Targets:
             # The +1 is because Cornix reposts the signal after it's posted by the bot, increasing the ID by 1.
             else:
                 post_message("Cancel", self.message_id + 1)
-
                 return
+
+        else:
+            raise RuntimeError("Position has been entered, cannot cancel it.")

@@ -1,7 +1,7 @@
 import pandas as pd
 import time
 
-from utils.initialize import initiate_pair_list
+from utils.initialize import initiate_pair_list, initialize
 from algo_code.algo import Algo
 from algo_code.segment import Segment
 from algo_code.position import Position
@@ -10,6 +10,7 @@ from utils.logger import logger
 import utils.constants as constants
 
 pair_list: list[str] = initiate_pair_list()
+initialize()
 
 # This dict contains data indicating the order blocks found and posted for each pair. With each list of positions, a key called
 # "latest_segment_start_time" is also saved, which is the time of the latest segment found by the code at the time of that position being added.
@@ -17,13 +18,14 @@ pair_list: list[str] = initiate_pair_list()
 # populated with appropriate data.
 # Added is the "has_been_searched" key, which is used to determine if an appropriate HO zigzag leg has been searched for positions. If True, the
 # algorithm waits until the next segment is found before searching for positions again.
-positions_info_dict: dict[str, dict[str, list[Position] | pd.Timestamp | None | bool]] = {}
+positions_info_dict: dict[str, dict[str, list[Position] | pd.Timestamp | None | bool | str]] = {}
 
 for pair_name in pair_list:
     positions_info_dict[pair_name] = {}
     positions_info_dict[pair_name]["positions"]: list[Position] = []
     positions_info_dict[pair_name]["latest_segment_start_time"] = None
     positions_info_dict[pair_name]["has_been_searched"] = None
+    positions_info_dict[pair_name]["last_log_message"] = ""
 
 #  Initializing the starting data
 pairs_start_times, pairs_starting_pivot_types = get_pairs_start_data(pair_list)
@@ -75,17 +77,22 @@ while True:
         if start_type == "NO_NEW_SEGMENT":
             # If we have already searched for positions in the current segment, we don't need to search again. We can move on to the next pair.
             if positions_info_dict[pair_name]["has_been_searched"]:
-                # logger.debug(f"\t{make_set_width(pair_name)}\tThe positions for the most recent appropriate HO leg have been processed, waiting...")
+                if positions_info_dict[pair_name]["last_log_message"] != "POSITIONS_ALREADY_PROCESSED":
+                    logger.debug(
+                        f"\t{make_set_width(pair_name)}\tThe positions for the most recent appropriate HO leg have been processed, waiting...")
+                    positions_info_dict[pair_name]["last_log_message"] = "POSITIONS_ALREADY_PROCESSED"
+
                 continue
 
             # Otherwise, if the latest segment has a BOS formation type, and after it has ended the new HO zigzag point has not yet formed, that means
             # the segment has ended by a candle closing above/below the BOS, but no appropriate HO zigzag leg exists to search for positions.
             elif latest_segment.formation_method == "bos" and latest_candle.time >= algo.convert_pdis_to_times(latest_segment.end_pdi) and len(
                     [h_o_pivot_pdi for h_o_pivot_pdi in algo.h_o_indices if h_o_pivot_pdi > latest_segment.end_pdi]) == 0:
-                # logger.debug(f"\t{make_set_width(pair_name)}\tNo new HO zigzag leg found after the last segment, waiting...")
-                continue
+                if positions_info_dict[pair_name]["last_log_message"] != "NO_ZZ_LEG_FOUND":
+                    logger.debug(f"\t{make_set_width(pair_name)}\tNo new HO zigzag leg found after the last segment, waiting...")
+                    positions_info_dict[pair_name]["last_log_message"] = "NO_ZZ_LEG_FOUND"
 
-            logger.debug(f"\t{make_set_width(pair_name)}\tPosition searching is required...")
+                continue
 
             # If none of the "waiting" conditions are true, that means the positions should be getting searched for and posted, if any are found valid
 
@@ -99,13 +106,20 @@ while True:
 
             # If no broken LPL is found, the method returns None; So we would move on to the next pair.
             if position_search_window is None:
+                if positions_info_dict[pair_name]["last_log_message"] != "NO_BROKEN_LPL_FOUND":
+                    logger.debug(f"\t{make_set_width(pair_name)}\tNo broken LPL found, waiting...")
+                    positions_info_dict[pair_name]["last_log_message"] = "NO_BROKEN_LPL_FOUND"
+
                 continue
+
             else:
                 position_search_start_pdi = position_search_window["start"]
                 position_search_end_pdi = position_search_window["end"]
                 position_activation_threshold = position_search_window["activation_threshold"]
 
                 positions_info_dict[pair_name]["has_been_searched"] = True
+                positions_info_dict[pair_name]["last_log_message"] = "SEARCHED_POSITIONS"
+
                 logger.debug(
                     f"\t{make_set_width(pair_name)}\tSearching for positions in the window "
                     f"{algo.convert_pdis_to_times([position_search_start_pdi, position_search_end_pdi])}...")
@@ -162,5 +176,10 @@ while True:
                             # If a position is found, we don't need to keep looking for valid OB's. We can break out of the loop and move on to the
                             # next "tip" pivot in the search window.
                             break
+
+        else:
+            if positions_info_dict[pair_name]["last_log_message"] != "LAST_SEGMENT_NOT_ENDED":
+                logger.debug(f"\t{make_set_width(pair_name)}\tPosition searching is required...")
+                positions_info_dict[pair_name]["last_log_message"] = "LAST_SEGMENT_NOT_ENDED"
 
     time.sleep(constants.main_loop_interval)
